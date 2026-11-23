@@ -1,0 +1,38 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>explicrate</title>
+<style>
+:root{color-scheme:light dark;font:16px system-ui}
+body{max-width:70rem;margin:2rem auto;padding:0 1rem}
+.wrap{display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap}main{flex:1 1 30rem}aside{flex:0 1 18rem}
+aside h3{margin-top:0}aside a{cursor:pointer;color:inherit}aside li{margin:.4rem 0}aside small{opacity:.6;display:block}
+form{display:flex;gap:.5rem}input{flex:1;padding:.5rem;font:inherit}button{padding:.5rem 1rem;font:inherit}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1rem}dt{opacity:.6}dd{margin:0}
+blockquote{margin:.5rem 0;padding-left:.8rem;border-left:3px solid #8886}
+</style>
+<h1>explicrate</h1>
+<div class=wrap><main><form id=f><input id=q placeholder="crate name, e.g. anyhow" autofocus><button>Look up</button></form>
+<div id=out></div></main>
+<aside><h3>New in the last 6 months</h3><ul id=recent></ul></aside></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rk=r=>r?`<small>top ${r.top_pct<0.1?'<0.1':r.top_pct<10?r.top_pct.toFixed(1):Math.round(r.top_pct)}% (decile ${r.decile}) of ${r.of.toLocaleString()} ${esc(r.cohort)}</small>`:'<small>rank not built (run explicrate rank)</small>';
+const link=u=>u?`<a href="${esc(u)}">${esc(u)}</a>`:'–';
+const go=async n=>{$('#q').value=n;
+ $('#out').textContent='Looking up…';
+ const r=await fetch('/api/crate/'+encodeURIComponent(n));const j=await r.json();
+ if(j.error){$('#out').textContent=j.error;return}
+ const c=j.crates_io;let h=`<h2>${esc(j.name)} ${c?esc(c.version):''}</h2>`;
+ if(c)h+=`<p>${esc(c.description)}</p><dl>
+ <dt>downloads</dt><dd>${c.downloads.toLocaleString()} (${c.recent_downloads?.toLocaleString()} recent)<br>${rk(j.downloads_rank)}</dd>
+ <dt>stars</dt><dd>${j.stars??'–'}<br>${rk(j.stars_rank)}</dd><dt>license</dt><dd>${esc(c.license)}</dd>
+ <dt>created</dt><dd>${esc(c.created?.slice(0,10))}</dd><dt>updated</dt><dd>${esc(c.updated?.slice(0,10))}</dd>
+ <dt>keywords</dt><dd>${esc(c.keywords.join(', '))}</dd><dt>repo</dt><dd>${link(c.repository)}</dd>
+ <dt>docs</dt><dd>${link(c.documentation)}</dd><dt>crates.io</dt><dd>${link('https://crates.io/crates/'+j.name)}</dd></dl>`;
+ else h+='<p>Not found on crates.io.</p>';
+ h+=(j.blessed||[]).map(b=>`<blockquote><b>Use case: ${esc(b.purpose)}</b> <small>(${esc(b.role)} · ${esc(b.group)} › ${esc(b.subgroup)})</small><br>${esc(b.notes)}${b.purpose_notes?`<br><small>${esc(b.purpose_notes)}</small>`:''}<br><small>via <a href="${esc(b.url)}">blessed.rs</a></small></blockquote>`).join('');
+ h+=`<h3>Mentions (${j.mentions.length})</h3>`+j.mentions.map(m=>`<blockquote>${esc(m.blurb)}<br><small>${esc(m.source)} — <a href="${esc(m.issue_url)}">${esc(m.issue)}</a></small></blockquote>`).join('')||'none';
+ $('#out').innerHTML=h};
+$('#f').onsubmit=e=>{e.preventDefault();const n=$('#q').value.trim();n&&go(n)};
+fetch('/api/recent').then(r=>r.json()).then(l=>{$('#recent').innerHTML=l.map(m=>`<li><a data-n="${esc(m.name)}">${esc(m.name)}</a><small>${esc(m.date.slice(0,7))} · ${m.source.startsWith('This')?'TWiR':'SciComp'}${m.usecase?' · '+esc(m.usecase):''}</small></li>`).join('')||'<li>none</li>'});
+$('#recent').onclick=e=>{const n=e.target.dataset.n;n&&go(n)};
+</script>

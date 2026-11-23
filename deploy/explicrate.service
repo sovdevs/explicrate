@@ -1,0 +1,23 @@
+[Unit]
+Description=explicrate crate lookup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=explicrate
+Group=explicrate
+WorkingDirectory=/var/lib/explicrate
+Environment=EXPLICRATE_CACHE=/var/lib/explicrate/cache
+# optional: GITHUB_TOKEN=... (raises the GitHub limit from 60/h to 5000/h)
+EnvironmentFile=-/etc/explicrate.env
+ExecStart=/usr/local/bin/explicrate serve 127.0.0.1:8080
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/explicrate
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
